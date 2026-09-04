@@ -1,13 +1,24 @@
 [project]
 name = "bioimagequant"
 version = "0.1.0"
-description = "Add your description here"
+description = "Array-based quantitative analysis for biological images"
 readme = "README.md"
 authors = [
     { name = "Benoit Roux", email = "benoit.roux@gmail.com" }
 ]
 requires-python = ">=3.12, <3.13"
-dependencies = []
+dependencies = [
+    "joblib>=1.5.3",
+    "numpy>=1.26.4",
+    "pandas[parquet]>=3.0.1",
+    "scikit-image>=0.26.0",
+    "scipy>=1.17.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
 
 [build-system]
 requires = ["hatchling"]
