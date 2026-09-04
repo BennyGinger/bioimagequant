@@ -50,6 +50,11 @@ def test_rejects_invalid_pixel_size(pixel_size: float) -> None:
         ExtractData(pixel_size=pixel_size)
 
 
+def test_extraction_rejects_unprojected_z_data() -> None:
+    with pytest.raises(ValueError, match="Project Z"):
+        ExtractData().add_intensity(np.zeros((2, 3, 3)), "ZYX")
+
+
 def test_quantification_adds_reference_distances() -> None:
     extractor = _extractor(pixel_size=0.5)
     reference = np.zeros((2, 2, 4, 4), dtype=np.uint8)

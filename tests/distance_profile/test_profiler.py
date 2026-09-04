@@ -1,7 +1,9 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from bioimagequant import DistanceProfiler
+from bioimagequant.distance_profile import stack as profile_stack
 
 
 def _profiler() -> DistanceProfiler:
@@ -48,6 +50,33 @@ def test_maximum_bins_limits_output() -> None:
         bin_width=2, maximum_bins=2)["bin"]) == {0, 1}
 
 
+def test_parallel_profiles_match_serial_profiles() -> None:
+    profiler = _profiler()
+
+    serial = profiler.calculate(bin_width=2, workers=1)
+    parallel = profiler.calculate(bin_width=2, workers=2)
+
+    pd.testing.assert_frame_equal(parallel, serial)
+
+
+def test_distance_map_is_calculated_once_per_reference_frame(
+        monkeypatch: pytest.MonkeyPatch,
+        ) -> None:
+    original = profile_stack.distance_map
+    calls = 0
+
+    def count_calls(reference: np.ndarray) -> np.ndarray:
+        nonlocal calls
+        calls += 1
+        return original(reference)
+
+    monkeypatch.setattr(profile_stack, "distance_map", count_calls)
+
+    _profiler().calculate(bin_width=2, workers=1)
+
+    assert calls == 2
+
+
 def test_static_masks_are_reused_for_every_frame() -> None:
     profiler = DistanceProfiler()
     profiler.add_intensity(
@@ -69,6 +98,18 @@ def test_rejects_z_axes() -> None:
 def test_rejects_fractional_maximum_bins() -> None:
     with pytest.raises(ValueError, match="maximum_bins"):
         _profiler().calculate(maximum_bins=1.5)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("maximum_bins", [0, -1, True])
+def test_rejects_invalid_maximum_bins(maximum_bins: int) -> None:
+    with pytest.raises(ValueError, match="maximum_bins"):
+        _profiler().calculate(maximum_bins=maximum_bins)
+
+
+@pytest.mark.parametrize("workers", [0, -1, True, 1.5])
+def test_rejects_invalid_worker_count(workers: int) -> None:
+    with pytest.raises(ValueError, match="workers"):
+        _profiler().calculate(workers=workers)  # type: ignore[arg-type]
 
 
 def test_missing_optional_metadata_produces_missing_columns() -> None:

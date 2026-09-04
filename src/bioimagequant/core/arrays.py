@@ -10,13 +10,14 @@ from numpy.typing import NDArray
 
 @dataclass(frozen=True, slots=True)
 class ArrayData:
-    """An array with explicit axes and optional channel identities."""
+    """A 2D spatial array with explicit axes and channel identities."""
 
     array: NDArray[Any]
     axes: str
     channel_labels: Sequence[str] | None = None
 
     def __post_init__(self) -> None:
+        """Validate metadata and normalize the channel axis and labels."""
         axes = self.axes.upper()
         array = np.asarray(self.array)
 
@@ -25,6 +26,13 @@ class ArrayData:
                 f"Axes {axes!r} do not match array shape {array.shape}.")
         if len(set(axes)) != len(axes):
             raise ValueError(f"Axes must be unique; got {axes!r}.")
+        if set(axes) - {"T", "C", "Y", "X"}:
+            raise ValueError(
+                "Bioimagequant supports only T, C, Y and X axes. "
+                "Project Z before adding arrays.")
+        if "Y" not in axes or "X" not in axes:
+            raise ValueError(
+                f"Arrays require Y and X axes; got {axes!r}.")
 
         labels = (tuple(self.channel_labels)
                   if self.channel_labels is not None else None)
@@ -50,18 +58,22 @@ class ArrayData:
 
     @property
     def frame_count(self) -> int:
+        """Return the number of time frames represented by the array."""
         return self.array.shape[self.axes.index("T")] if "T" in self.axes else 1
 
     @property
     def channel_count(self) -> int:
+        """Return the number of image channels represented by the array."""
         return self.array.shape[-1] if "C" in self.axes else 1
 
     @property
     def spatial_axes(self) -> str:
+        """Return the axes remaining after time and channel are removed."""
         return "".join(axis for axis in self.axes if axis not in {"T", "C"})
 
     @property
     def spatial_shape(self) -> tuple[int, ...]:
+        """Return the shape corresponding to the spatial axes."""
         return tuple(
             size for axis, size in zip(self.axes, self.array.shape, strict=True)
             if axis not in {"T", "C"})

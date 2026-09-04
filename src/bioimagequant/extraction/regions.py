@@ -71,6 +71,7 @@ def quantify_region_frame(
 def _resolve_region_properties(
         additional_properties: str | Sequence[str] | None = None,
         ) -> tuple[str, ...]:
+    """Combine default and requested region properties without duplicates."""
     if additional_properties is None:
         return DEFAULT_REGION_PROPERTIES
     if isinstance(additional_properties, str):

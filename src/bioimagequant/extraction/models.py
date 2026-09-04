@@ -5,10 +5,10 @@ from dataclasses import dataclass, field
 import logging
 from typing import Any, Literal
 
-import numpy as np
 from numpy.typing import NDArray
 
 from bioimagequant.core.arrays import ArrayData
+from bioimagequant.core.validation import validate_binary_array
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +22,7 @@ class ArrayInputs:
     references: dict[str, ArrayData] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        """Validate any object-label arrays supplied during construction."""
         if self.intensity is None:
             return
         for name, labels in self.object_labels.items():
@@ -63,9 +64,8 @@ class ArrayInputs:
                 raise ValueError(
                     f"Reference array {name!r} requires a channel label for "
                     "the output table.")
-            if not np.all((data.array == 0) | (data.array == 1)):
-                raise ValueError(
-                    f"Reference array {name!r} must contain only binary values 0 and 1.")
+            validate_binary_array(
+                data.array, description=f"Reference array {name!r}")
             for object_name, labels in self.object_labels.items():
                 self._validate_reference(name, data, object_name, labels)
             if name in self.references:
@@ -80,6 +80,7 @@ class ArrayInputs:
                                 labels: ArrayData,
                                 intensity: ArrayData,
                                 ) -> None:
+        """Require object labels to align with their intensity array."""
         intensity_axes = intensity.axes.removesuffix("C")
         labels_axes = labels.axes.removesuffix("C")
         if intensity_axes != labels_axes:
@@ -109,6 +110,7 @@ class ArrayInputs:
                             object_name: str,
                             labels: ArrayData,
                             ) -> None:
+        """Require a reference mask to align with its object labels."""
         if reference.spatial_axes != labels.spatial_axes:
             raise ValueError(
                 f"Reference {reference_name!r} spatial axes "

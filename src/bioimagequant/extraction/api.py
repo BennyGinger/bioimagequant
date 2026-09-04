@@ -2,17 +2,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from joblib import Parallel, delayed
 from numpy.typing import NDArray
 import numpy as np
 import pandas as pd
 
+from bioimagequant.core.execution import run_jobs
 from bioimagequant.core.scales import validate_optional_scale
 from bioimagequant.extraction.models import ArrayInputs
 from bioimagequant.extraction.regions import quantify_region_frame
-
-
-MEMMAP_THRESHOLD = "10M"
 
 
 @dataclass
@@ -24,6 +21,7 @@ class ExtractData:
     pixel_size: float | None = None
 
     def __post_init__(self) -> None:
+        """Validate optional temporal and spatial acquisition scales."""
         validate_optional_scale(
             self.interval, name="interval", allow_zero=True)
         validate_optional_scale(self.pixel_size, name="pixel_size")
@@ -77,10 +75,6 @@ class ExtractData:
                  workers: int = 1,
                  ) -> pd.DataFrame:
         """Quantify every object-label channel and frame."""
-        if isinstance(workers, bool) or workers < 1:
-            raise ValueError(
-                "workers must be an integer greater than or equal to 1.")
-
         intensity = self.array_data.intensity
         if intensity is None:
             raise ValueError(
@@ -102,17 +96,8 @@ class ExtractData:
             for frame_index in range(label_stack.frame_count)
         )
 
-        if workers == 1:
-            results = [quantify_region_frame(*job) for job in jobs]
-        else:
-            results = Parallel(
-                n_jobs=workers,
-                backend="loky",
-                max_nbytes=MEMMAP_THRESHOLD,
-                mmap_mode="r",
-            )(
-                delayed(quantify_region_frame)(*job)
-                for job in jobs)
+        results = run_jobs(
+            quantify_region_frame, jobs, workers=workers)
 
         if not results:
             return pd.DataFrame()

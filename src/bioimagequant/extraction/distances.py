@@ -34,6 +34,7 @@ def reference_distance_table(labels: NDArray[Any],
 def _frame_channels(reference: ArrayData,
                     frame_index: int,
                     ) -> tuple[tuple[str | None, ArrayData], ...]:
+    """Return every channel from the applicable reference frame."""
     selected = reference.frame(
         0 if reference.frame_count == 1 else frame_index)
     return tuple(selected.iter_channels())
@@ -45,6 +46,7 @@ def _reference_channel_table(labels: NDArray[Any],
                              ref_label_name: str,
                              ref_channel: str | None,
                              ) -> pd.DataFrame:
+    """Build one object-distance table for a reference channel."""
     if np.any(reference):
         distance_map = distance_transform_edt(~reference.astype(bool))
         properties = regionprops_table(
@@ -69,5 +71,6 @@ def _reference_channel_table(labels: NDArray[Any],
 def _centroid_distance(region_mask: NDArray[np.bool_],
                        distance_map: NDArray[np.floating[Any]],
                        ) -> float:
+    """Read the distance value at an object's integer centroid pixel."""
     centroid = np.mean(np.argwhere(region_mask), axis=0)
     return float(distance_map[tuple(centroid.astype(int))])
