@@ -31,15 +31,17 @@ def test_calculate_builds_all_conditions_and_aligned_bins() -> None:
     result = _profiler().calculate(bin_width=2)
     assert len(result) == 24
     assert set(result["channel"]) == {"GFP", "RFP"}
-    assert set(result["reference"]) == {"edge"}
-    assert set(result["roi"].dropna()) == {"tailfin"}
-    assert result["roi"].isna().any()
+    assert set(result["ref_label_name"]) == {"edge"}
+    assert set(result["ref_channel"]) == {"RFP"}
+    assert set(result["roi_label_name"].dropna()) == {"tailfin"}
+    assert result["roi_label_name"].isna().any()
+    assert set(result["roi_channel"].dropna()) == {"RFP"}
     np.testing.assert_allclose(result["dist_um"].unique(), [0.5, 1.5, 2.5])
 
     selected = result[
         (result["frame"] == 1)
         & (result["channel"] == "GFP")
-        & (result["roi"] == "tailfin")]
+        & (result["roi_label_name"] == "tailfin")]
     np.testing.assert_array_equal(selected["pixel_count"], [1, 2, 0])
     np.testing.assert_allclose(selected["mean_intensity"].iloc[:2], [20, 35])
     assert np.isnan(selected["mean_intensity"].iloc[2])
